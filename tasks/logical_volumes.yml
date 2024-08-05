@@ -1,0 +1,25 @@
+---
+
+- name: Create Logical Volume
+  community.general.lvol:
+    active: "{{ item.active | default(omit) }}"
+    force: "{{ item.force | default(omit) }}"
+    lv: "{{ item.name | default(omit) }}"
+    opts: "{{ item.opts | default(omit) }}"
+    pvs: "{{ physical_volumes | default(omit) }}"
+    resizefs: "{{ item.resizefs | default(omit) }}"
+    shrink: "{{ item.shrink | default(omit) }}"
+    size: "{{ item.size | default(omit) }}"
+    snapshot: "{{ item.snapshot | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    thinpool: "{{ item.thinpool | default(omit) }}"
+    vg: "{{ name }}"
+  loop: "{{ logical_volumes }}"
+
+- name: Create Filesystem on Disks
+  community.general.filesystem:
+    fstype: "{{ item.fstype | default('ext4') }}"
+    dev: "/dev/{{ name }}/{{ item.1.name }}"
+    opts: "{{ item.fs_opts | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ logical_volumes }}"

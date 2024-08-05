@@ -1,0 +1,40 @@
+---
+
+lvm_volume_groups:
+  - name: "thin01-vg"
+    physical_volumes: /dev/sda
+    pv_options: "--metadatasize 16G"
+    thinpool:
+      - name: data
+        size: 98%VG
+        opts: "--poolmetadatasize 16G --chunksize 64"
+  - name: "data01-vg"
+    physical_volumes: /dev/sdb
+    pv_options: "--metadatasize 16G"
+  - name: "data02-vg"
+    physical_volumes: /dev/sdc
+    pv_options: "--metadatasize 16G"
+
+    # logical_volumes:
+    #   - name: pve
+    #     size: 98%VG
+    #     thinpool: data
+    #     mount_path: /var/lib/vz-vmdata01
+  # - name: "vmdata02"
+  #   physical_volumes: /dev/sdb
+  #   pv_options: "--metadatasize 1024M"
+  #   opts: "--metadatasize 1024M --chunksize 256"
+  #   logical_volumes:
+  #     - name: pve
+  #       size: 100%VG
+  #       thinpool: data
+  #       mount_path: /var/lib/vz-vmdata02
+  # - name: "vmdata03"
+  #   physical_volumes: /dev/sda
+  #   pv_options: "--metadatasize 1024M"
+  #   opts: "--metadatasize 1024M --chunksize 256"
+  #   logical_volumes:
+  #     - name: pve
+  #       size: 95%VG
+  #       thinpool: data
+  #       mount_path: /var/lib/vz-vmdata03

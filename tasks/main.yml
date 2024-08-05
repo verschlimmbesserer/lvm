@@ -1,0 +1,76 @@
+---
+# tasks file for lvm
+
+- name: Install lvm2
+  ansible.builtin.apt:
+    name: lvm2
+    state: present
+
+- name: Gather device Facts
+  ansible.builtin.setup:
+    filter: ansible_devices
+
+- name: Save disk information to variables
+  ansible.builtin.set_fact:
+    nvme_disks: "{{ ansible_devices | dict2items | selectattr('key', 'match', '^nvme.*') | list }}"
+    sata_disks: "{{ ansible_devices | dict2items | selectattr('key', 'match', '^sd.*') | list }}"
+
+- name: Create Physical Volumes and Volume Groups
+  community.general.lvg:
+    vg: "{{ item.name }}"
+    vg_options: "{{ item.vg_options | default(omit) }}"
+    reset_vg_uid: "{{ item.reset_vg_uid | default(omit) }}"
+    pvs: "{{ item.physical_volumes }}"
+    pesize: "{{ item.pesize | default(omit) }}"
+    pv_options: "{{ item.pv_options | default(omit) }}"
+    pvresize: "{{ item.pv_resize | default(false) }}"
+    reset_pv_uid: "{{ item.reset_pv_uid | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ lvm_volume_groups | flatten(levels=1) }}"
+
+- name: Create a thin pool
+  community.general.lvol:
+    active: "{{ item.1.active | default(omit) }}"
+    force: "{{ item.1.force | default(omit) }}"
+    opts: "{{ item.1.opts | default(omit) }}"
+    size: "{{ item.1.size | default(omit) }}"
+    state: "{{ item.0.state | default('present') }}"
+    thinpool: "{{ item.1.name | default(omit) }}"
+    vg: "{{ item.0.name }}"
+  loop: "{{ lvm_volume_groups | subelements('thinpool', skip_missing=True) }}"
+
+
+- name: Create Logical Volume
+  community.general.lvol:
+    active: "{{ item.1.active | default(omit) }}"
+    force: "{{ item.1.force | default(omit) }}"
+    lv: "{{ item.1.name | default(omit) }}"
+    opts: "{{ item.1.opts | default(omit) }}"
+    pvs: "{{ item.0.physical_volumes | default(omit) }}"
+    resizefs: "{{ item.1.resizefs | default(omit) }}"
+    shrink: "{{ item.1.shrink | default(omit) }}"
+    size: "{{ item.1.size | default(omit) }}"
+    snapshot: "{{ item.1.snapshot | default(omit) }}"
+    state: "{{ item.1.state | default('present') }}"
+    thinpool: "{{ item.0.thinpool.name | default(omit) }}"
+    vg: "{{ item.0.name }}"
+  loop: "{{ lvm_volume_groups | subelements('logical_volumes', skip_missing=True) }}"
+
+- name: Create Filesystem on Disks
+  community.general.filesystem:
+    fstype: "{{ item.1.fstype | default('ext4')}}"
+    dev: "/dev/{{ item.0.name }}/{{ item.1.name }}"
+    opts: "{{ item.1.fs_opts | default(omit) }}"
+    state: "{{ item.1.state | default('present') }}"
+  loop: "{{ lvm_volume_groups | subelements('logical_volumes', skip_missing=True) }}"
+
+- name: Mount LVM Devices and add them to /etc/fstab
+  ansible.posix.mount:
+    path: "{{ item.1.mount_path }}"
+    src: "/dev/mapper/{{ item.0.name | replace('-', '--') }}-{{ item.1.name }}"
+    fstype: "{{ item.1.fstype | default('ext4')}}"
+    opts: defaults
+    dump: 0
+    passno: 2
+    state: mounted
+  loop: "{{ lvm_volume_groups | subelements('logical_volumes', skip_missing=True) }}"

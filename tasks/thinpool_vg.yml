@@ -1,0 +1,9 @@
+---
+
+- name: Create a thin pool
+  community.general.lvol:
+    opts: "{{ opts | default(omit) }}"
+    size: "{{ size | default(omit) }}"
+    state: "{{ state | default('present') }}"
+    thinpool: "{{ thinpool | default(omit) }}"
+    vg: "{{ name }}"
